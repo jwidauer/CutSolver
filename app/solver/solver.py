@@ -6,6 +6,7 @@ from typing import Collection, Tuple, List
 
 from app.solver.data.Job import Job
 from app.solver.data.Result import SolverType, Result
+from app.solver.optimal_solver import StockCutSolver
 
 # backend parameter
 n_max_precise = 9  # 10 takes 30s on a beefy desktop, 9 only 1.2s
@@ -19,17 +20,8 @@ def distribute(job: Job) -> Result:
     lengths: List[List[int]]
     solver_type: SolverType
 
-    if len(job) <= n_max_precise:
-        lengths = _solve_bruteforce(job)
-        solver_type = SolverType.bruteforce
-    elif len(job) <= n_max_good:
-        lengths = _solve_FFD(job)
-        solver_type = SolverType.FFD
-    elif len(job) <= n_max:
-        lengths = _solve_gapfill(job)
-        solver_type = SolverType.gapfill
-    else:
-        raise OverflowError("Input too large")
+    lengths = _solve_optimal(job)
+    solver_type = SolverType.optimal
 
     time_us = int((perf_counter() - time) * 1000 * 1000)
 
@@ -199,3 +191,24 @@ def _get_trimming(max_length: int, lengths: Collection[int], cut_width: int) -> 
         raise OverflowError
 
     return trimmings
+
+
+def _solve_optimal(job: Job) -> List[List[int]]:
+    """
+    Optimally solves the stock cutting problem by
+    minimizing the amount of stock used.
+    """
+    solver = StockCutSolver(
+        job.target_sizes, job.cut_width, job.max_length, 1.0)
+    total_cost, patterns = solver.solve()
+
+    # Convert from the solver output to the stocks list
+    stocks: List[List[int]] = []
+    for pattern in patterns:
+        stock: List[int] = []
+        for length in job.target_sizes:
+            stock.extend([length] * pattern[1][length])
+
+        stocks.extend([stock] * pattern[0])
+
+    return stocks

@@ -11,6 +11,7 @@ class SolverType(str, Enum):  # str as base enables Pydantic-Schemas
     bruteforce = "bruteforce"
     gapfill = "gapfill"
     FFD = "FFD"
+    optimal = "optimal"
 
 
 class Result(BaseModel):
